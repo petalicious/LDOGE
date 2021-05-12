@@ -23,10 +23,10 @@ class CNode;
 class CReserveKey;
 class CWallet;
 
-static const int LAST_POW_BLOCK = 8000;
+static const int LAST_POW_BLOCK = 403800;
 
 /** The maximum allowed size for a serialized block, in bytes (network rule) */
-static const unsigned int MAX_BLOCK_SIZE = 1000000;
+static const unsigned int MAX_BLOCK_SIZE = 4000000;
 /** The maximum size for mined blocks */
 static const unsigned int MAX_BLOCK_SIZE_GEN = MAX_BLOCK_SIZE/2;
 /** The maximum size for transactions we're willing to relay/mine **/
@@ -44,31 +44,24 @@ static const unsigned int DEFAULT_MAX_ORPHAN_BLOCKS = 750;
 /** The maximum number of entries in an 'inv' protocol message */
 static const unsigned int MAX_INV_SZ = 50000;
 /** Fees smaller than this (in satoshi) are considered zero fee (for transaction creation) */
-static const int64_t MIN_TX_FEE = 1000000; //0.01 coins
+static const int64_t MIN_TX_FEE = 10000; //0.0001 coins
 /** Fees smaller than this (in satoshi) are considered zero fee (for relaying) */
 static const int64_t MIN_RELAY_TX_FEE = MIN_TX_FEE;
-/** Fees smaller than this (in satoshi) are considered zero fee (for transaction creation) after block 594999 */
-static const int64_t MIN_TX_FEEv2 = 10000000; //0.1 coins
-/** Fees smaller than this (in satoshi) are considered zero fee (for relaying) after block 594999 */
-static const int64_t MIN_RELAY_TX_FEEv2 = MIN_TX_FEEv2;
 /** No amount larger than this (in satoshi) is valid for sending*/
-static const int64_t MAX_MONEY = 50000000000 * COIN;
+static const int64_t MAX_MONEY = 350000000 * COIN;
 inline bool MoneyRange(int64_t nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 /** Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp. */
 static const unsigned int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
 
-static const int64_t COIN_YEAR_REWARD = 1 * CENT; 
+static const int64_t COIN_YEAR_REWARD = 2.5 * CENT;
 
-inline bool IsProtocolV1RetargetingFixed(int nHeight) { return TestNet() || nHeight > 1; } 
-inline bool IsProtocolV2(int nHeight) { return TestNet() || nHeight > 2; } 
+inline bool IsProtocolV1RetargetingFixed(int nHeight) { return TestNet() || nHeight > 1; }
 
-inline int64_t PastDrift(int64_t nTime, int nHeight)   { return IsProtocolV2(nHeight) ? nTime      : nTime - 10 * 60; }
+inline int64_t PastDrift(int64_t nTime)   { return nTime - 5 * 60; }
 
-inline int64_t FutureDriftV1(int64_t nTime) { return nTime + 10 * 60; }
-inline int64_t FutureDriftV2(int64_t nTime) { return nTime + 15; }
-inline int64_t FutureDrift(int64_t nTime, int nHeight) { return IsProtocolV2(nHeight) ? FutureDriftV2(nTime) : FutureDriftV1(nTime); }
+inline int64_t FutureDrift(int64_t nTime) { return nTime + 5 * 60; }
 
-inline unsigned int GetTargetSpacing(int nHeight) { return IsProtocolV2(nHeight) ? 64 : 60; }
+inline unsigned int GetTargetSpacing(int nHeight) { return 3 * 30; }
 
 extern CScript COINBASE_FLAGS;
 extern CCriticalSection cs_main;
@@ -140,6 +133,8 @@ void ThreadImport(std::vector<boost::filesystem::path> vImportFiles);
 
 bool CheckProofOfWork(uint256 hash, unsigned int nBits);
 unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake);
+unsigned int GetNextTargetRequiredV1(const CBlockIndex* pindexLast, bool fProofOfStake);
+unsigned int GetNextTargetRequiredV2(const CBlockIndex* pindexLast, bool fProofOfStake);
 int64_t GetProofOfWorkReward(int nHeight, int64_t nFees);
 int64_t GetProofOfStakeReward(int64_t nCoinAge, int64_t nFees);
 unsigned int ComputeMinWork(unsigned int nBase, int64_t nTime);
@@ -588,7 +583,7 @@ class CBlock
 {
 public:
     // header
-    static const int CURRENT_VERSION = 7;
+    static const int CURRENT_VERSION = 1;
     int nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
@@ -658,15 +653,13 @@ public:
 
     uint256 GetHash() const
     {
-        if (nVersion > 6)
-            return Hash(BEGIN(nVersion), END(nNonce));
-        else
-            return GetPoWHash();
+        return Hash(BEGIN(nVersion), END(nNonce));
     }
 
     uint256 GetPoWHash() const
     {
-        return scrypt_blockhash(CVOIDBEGIN(nVersion));
+        //return scrypt_blockhash(CVOIDBEGIN(nVersion));
+        return Hash(BEGIN(nVersion), END(nNonce));
     }
 
     int64_t GetBlockTime() const
@@ -995,10 +988,7 @@ public:
 
     int64_t GetPastTimeLimit() const
     {
-        if (IsProtocolV2(nHeight))
-            return GetBlockTime();
-        else
-            return GetMedianTimePast();
+        return GetMedianTimePast();
     }
 
     enum { nMedianTimeSpan=11 };
