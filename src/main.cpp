@@ -43,7 +43,7 @@ static const int64_t nMaxAdjustUp = 25;
 static const int64_t nMaxAdjustDown = 50;
 static const int64_t nAdjustAmplitude = 25;
 
-unsigned int nStakeMinAge = 8 * 60 * 60; // min age is 8 hours
+unsigned int nStakeMinAge = 1 * 24 * 60 * 60; // min age is 24 hours
 unsigned int nModifierInterval = 10 * 60; // time to elapse before new modifier is computed
 
 int nCoinbaseMaturity = 10; // really low in bitFlowers
